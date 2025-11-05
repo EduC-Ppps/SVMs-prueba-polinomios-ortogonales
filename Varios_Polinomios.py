@@ -1,7 +1,7 @@
 """
 Created on Wed Nov  5 10:49:13 2025
 
-@author: econt
+@author: Eduardo Contreras
 """
 
 import pandas as pd
