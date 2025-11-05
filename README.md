@@ -1,0 +1,1 @@
+Esta rama tiene un error a la hora de graficar, puesto que debido a cómo se había definido clf_best para graficar, los vectores soporte salían como (0,0). A partir de aquí se han hecho los cambios necesarios para que, en las otras ramas salga ya correctamente.
