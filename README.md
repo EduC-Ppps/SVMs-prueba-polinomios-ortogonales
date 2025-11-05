@@ -1,0 +1,1 @@
+En el proyecto se ha añadido el archivo Varios_Polinomios, que es una copia del main pero haciendo que el programa ejecute los distintos polinomios (Legendre, Hermítico y de Chebyshev) a la vez, graficando cada uno de manera independiente.
