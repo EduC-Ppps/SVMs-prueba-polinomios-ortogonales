@@ -40,7 +40,7 @@ plt.show()
 #Elegir el kernel y el tipo de polinomio
 #Polinomios a elegir: legendre, chebyshev, hermite
 
-kernel = get_cd_kernel( degree=4, poly_type="chebyshev", combine="sum", normalize=True)
+kernel = get_cd_kernel( degree=4, poly_type="legendre", combine="product", normalize=False)
 
 #Realizamos la clasificación con el k-fold
 
@@ -55,11 +55,11 @@ for train_idx, test_idx in kf.split(X):
 
     SVM = SVC(kernel=kernel, C=1)
     SVM.fit(X_train, y_train)
-
+   
     y_pred = SVM.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     scores.append(acc)
-    models.append(SVM)
+    models.append((SVM, X_train, y_train))
     print(f"Fold {fold}: accuracy = {acc:.3f}")
     fold += 1
 
@@ -69,9 +69,12 @@ print(f"\nMedia de accuracy (5-fold): {mean_acc:.3f} ± {std_acc:.3f}")
 
 #Para graficar, nos quedamos con el modelo del k-fold con una mayor precisión
 best_idx = np.argmax(scores)
-clf_best = models[best_idx]
+clf_best, X_train_best, y_train_best = models[best_idx]
 
 print(f"\nUsando modelo del Fold {best_idx+1} para visualización (accuracy={scores[best_idx]:.3f})")
+# Para obtener las coordenadas de los vectores soporte usando support_:
+sv_indices = clf_best.support_               # índices relativos a X_train_best
+support_coords = X_train_best[sv_indices]    # (n_sv, 2)
 
 #Graficamos el modelo
 xx, yy = np.meshgrid(
@@ -88,12 +91,12 @@ plt.contour(xx, yy, Z, levels=[0], colors='k', linewidths=2)
 plt.contour(xx, yy, Z, levels=[-1, 1], colors='k', linestyles='--', linewidths=1)
 
 # Puntos de cada clase (colores)
-plt.scatter(X[y==1,0], X[y==1,1], color='royalblue', label='Clase +1', s=40, edgecolor='k')
-plt.scatter(X[y==-1,0], X[y==-1,1], color='orangered', label='Clase -1', s=40, edgecolor='k')
+plt.scatter(X[y==1,0], X[y==1,1], color='orangered', label='Clase +1', s=40, edgecolor='k')
+plt.scatter(X[y==-1,0], X[y==-1,1], color='royalblue', label='Clase -1', s=40, edgecolor='k')
 
 # Vectores soporte
-plt.scatter(clf_best.support_vectors_[:,0],
-            clf_best.support_vectors_[:,1],
+plt.scatter(support_coords[:,0], 
+            support_coords[:,1],
             s=120, facecolors='none', edgecolors='k', linewidths=1.5,
             label='Vectores soporte')
 

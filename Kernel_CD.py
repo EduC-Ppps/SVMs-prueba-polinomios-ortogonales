@@ -4,84 +4,99 @@ Created on Sun Nov  2 12:54:13 2025
 @author: Eduardo Contreras
 """
 import numpy as np
-from numpy.polynomial.legendre import legval as legendre_val
-from numpy.polynomial.chebyshev import chebval as chebyshev_val
-from numpy.polynomial.hermite import hermval as hermite_val
+import math
+from numpy.polynomial.legendre import legval
+from numpy.polynomial.chebyshev import chebval
+from numpy.polynomial.hermite import hermval
 
-# --------------------------------------------------------
-#  Selección del tipo de polinomio
-# --------------------------------------------------------
-def get_poly_eval(poly_type):
-    """
-    Devuelve la función de evaluación de polinomios correspondiente.
-    """
-    poly_type = poly_type.lower()
+# ======================================================
+#   FUNCIONES AUXILIARES
+# ======================================================
+
+def _get_poly_func(poly_type):
+    """Devuelve la función evaluadora correspondiente al tipo de polinomio."""
     if poly_type == "legendre":
-        return legendre_val
+        return legval
     elif poly_type == "chebyshev":
-        return chebyshev_val
+        return chebval
     elif poly_type == "hermite":
-        return hermite_val
+        return hermval
     else:
-        raise ValueError("Tipo de polinomio no válido. Usa: 'legendre', 'chebyshev' o 'hermite'.")
+        raise ValueError("Tipo de polinomio no válido. Usa 'legendre', 'chebyshev' o 'hermite'.")
+
+def _cd_diagonal(x, degree, poly_type):
+    """
+    Evalúa la suma de Christoffel-Darboux cuando x = y (caso diagonal).
+    """
+    poly_func = _get_poly_func(poly_type)
+    n = degree
+    k = np.arange(n + 1)
+    
+    # Evaluamos todos los P_k(x)
+    P = np.array([poly_func(x, [0]*ki + [1]) for ki in k])
+    
+    # Pesos 1/h_k según ortogonalidad estándar
+    if poly_type == "legendre":
+        inv_hk = (2*k + 1)/2.0
+    elif poly_type == "chebyshev":
+        inv_hk = np.pi * np.ones_like(k) / np.where(k == 0, 2, 1)  # forma clásica
+    elif poly_type == "hermite":
+        inv_hk = 1.0 / (np.sqrt(np.pi) * (2**k) * np.array([math.factorial(i) for i in k]))
+    
+    # Suma ponderada
+    Sxx = np.sum(inv_hk[:, None] * (P**2), axis=0)
+    return Sxx
 
 
-# --------------------------------------------------------
-#  Christoffel–Darboux 1D
-# --------------------------------------------------------
+# ======================================================
+#   KERNEL CD 1D
+# ======================================================
+
 def cd_kernel_1d(x, y, degree=4, poly_type="legendre", tol=1e-10):
     """
-    Calcula el kernel de Christoffel–Darboux 1D para el tipo de polinomio indicado.
+    Kernel Christoffel–Darboux unidimensional basado en el tipo de polinomio.
     """
-    poly_eval = get_poly_eval(poly_type)
-    x, y = np.asarray(x).ravel(), np.asarray(y).ravel()
+    poly_func = _get_poly_func(poly_type)
+    x = np.asarray(x).ravel()
+    y = np.asarray(y).ravel()
     n = degree
 
-    # Evaluar P_n y P_{n+1}
-    Pn_x = poly_eval(x, [0]*n + [1])
-    Pn1_x = poly_eval(x, [0]*(n+1) + [1])
-    Pn_y = poly_eval(y, [0]*n + [1])
-    Pn1_y = poly_eval(y, [0]*(n+1) + [1])
+    # Evaluamos P_n y P_{n+1}
+    Pn_x   = poly_func(x, [0]*n + [1])
+    Pnp1_x = poly_func(x, [0]*(n+1) + [1])
+    Pn_y   = poly_func(y, [0]*n + [1])
+    Pnp1_y = poly_func(y, [0]*(n+1) + [1])
 
-    num = np.outer(Pn1_x, Pn_y) - np.outer(Pn_x, Pn1_y)
+    # Fórmula de Christoffel–Darboux general
+    num = np.outer(Pnp1_x, Pn_y) - np.outer(Pn_x, Pnp1_y)
     den = x[:, None] - y[None, :]
 
-    # Calcular el límite cuando x ≈ y
-    mask = np.abs(den) < tol
     K = np.empty_like(den)
+    mask = np.abs(den) < tol
+
+    # Parte no diagonal
     K[~mask] = num[~mask] / den[~mask]
-    K[mask] = np.diag(_cd_diagonal(x[mask.nonzero()[0]], degree, poly_type))
+    # Parte diagonal (corregido)
+    K[mask] = _cd_diagonal(x[mask.nonzero()[0]], degree, poly_type)
 
     return K
 
 
-def _cd_diagonal(x, degree, poly_type):
-    """
-    Evalúa el límite del kernel CD cuando x → y.
-    """
-    poly_eval = get_poly_eval(poly_type)
-    k = np.arange(degree + 1)
-    P = np.array([poly_eval(x, [0]*i + [1]) for i in k])
-    weights = (2*k + 1)/2  # Normalización genérica (válida para Legendre)
-    return np.sum(weights[:, None] * P**2, axis=0)
+# ======================================================
+#   KERNEL CD MULTIDIMENSIONAL (OPCIONAL)
+# ======================================================
 
-
-# --------------------------------------------------------
-#  Christoffel–Darboux multidimensional
-# --------------------------------------------------------
-def cd_kernel(X, Y=None, degree=4, poly_type="legendre", combine="product", normalize=True):
+def cd_kernel(X, Y, degree=4, poly_type="legendre", combine="product", normalize=True):
     """
-    Kernel CD multidimensional (tensorial o suma promediada).
-    combine = 'product' → producto tensorial
-    combine = 'sum'     → promedio por dimensión
+    Extiende el kernel CD 1D a datos multidimensionales (por dimensión).
+    combine: 'sum' o 'product'
     """
     X = np.atleast_2d(X)
-    Y = X if Y is None else np.atleast_2d(Y)
+    Y = np.atleast_2d(Y)
 
-    n, d = X.shape[0], X.shape[1]
+    n, d = X.shape
     m = Y.shape[0]
 
-    # Inicializar matriz kernel
     K = np.ones((n, m)) if combine == "product" else np.zeros((n, m))
 
     for j in range(d):
@@ -90,33 +105,25 @@ def cd_kernel(X, Y=None, degree=4, poly_type="legendre", combine="product", norm
             K *= Kj
         else:
             K += Kj
-
     if combine == "sum":
         K /= d
 
     # Normalización tipo coseno
     if normalize:
-        Kxx = np.diag(cd_kernel(X, degree=degree, poly_type=poly_type, combine=combine, normalize=False))
-        Kyy = np.diag(cd_kernel(Y, degree=degree, poly_type=poly_type, combine=combine, normalize=False))
-        K /= np.sqrt(np.outer(Kxx, Kyy)) + 1e-12
-
-    # Simetrizar si es autocorrelación
-    if Y is X:
-        K = 0.5 * (K + K.T)
+        diag_X = np.sqrt(np.diag(cd_kernel(X, X, degree, poly_type, combine, False)) + 1e-12)
+        diag_Y = np.sqrt(np.diag(cd_kernel(Y, Y, degree, poly_type, combine, False)) + 1e-12)
+        K = K / (diag_X[:, None] * diag_Y[None, :] + 1e-12)
 
     return K
 
 
-# --------------------------------------------------------
-#  Función
-# --------------------------------------------------------
+# ======================================================
+#   INTERFAZ DE USO PARA SVM
+# ======================================================
+
 def get_cd_kernel(degree=4, poly_type="legendre", combine="product", normalize=True):
     """
-    Devuelve una función kernel lista para usar en SVM de sklearn.
-    Ejemplo:
-        from sklearn.svm import SVC
-        kernel = get_cd_kernel(degree=5, poly_type='hermite')
-        clf = SVC(kernel=kernel)
+    Devuelve una función kernel lista para usar con sklearn.SVC(kernel=...).
     """
     return lambda X, Y: cd_kernel(X, Y, degree=degree, poly_type=poly_type,
                                   combine=combine, normalize=normalize)
