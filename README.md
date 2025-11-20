@@ -1,1 +1,2 @@
-En el proyecto se ha añadido el archivo Varios_Polinomios, que es una copia del main pero haciendo que el programa ejecute los distintos polinomios (Legendre, Hermítico y de Chebyshev) a la vez, graficando cada uno de manera independiente.
+Se ha creado una interfaz en la que se puede elegir tanto el tamaño máximo de las características que se quiere alcanzar con la red neuronal como la función de activación que se quiere emplear en conjunción con la función del polinomio de Chebyshev, que será lo que se aplique primero.
+También se han añadido las opciones de guardar o cargar el modelo de la red neuronal.
