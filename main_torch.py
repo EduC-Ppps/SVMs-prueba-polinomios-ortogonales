@@ -20,9 +20,9 @@ from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from sklearn.preprocessing import LabelEncoder
 
-# =========================================================
-#   CHEBYSHEV EN PYTORCH
-# =========================================================
+############################################################
+# Polinomio de Chebyshev implementado en PyTorch
+############################################################
 
 def cheb_torch_Tn(z, n):
     """
@@ -67,9 +67,9 @@ class ChebActivation(nn.Module):
         return out
 
 
-# =========================================================
-#   ACTIVACIONES GENERALES EN PYTORCH
-# =========================================================
+###########################################################
+# Funciones de activación generales (PyTorch)
+###########################################################
 
 class Softsign(nn.Module):
     def forward(self, x):
@@ -93,22 +93,18 @@ def get_activation(name: str) -> nn.Module:
         return nn.ReLU()
     if name in ["identity", "none"]:
         return nn.Identity()
-    if name == "elu":
-        return nn.ELU()
-    if name == "silu":
-        return nn.SiLU()
     if name == "leaky_relu":
         return LeakyReLU(alpha=0.01)
-    if name == "softsign":
-        return Softsign()
-
+    if name == "Sigmoid":
+        return nn.Sigmoid()
+    
     # por defecto, tanh
     return nn.Tanh()
 
 
-# =========================================================
-#   RED NEURONAL DINÁMICA EN PYTORCH
-# =========================================================
+############################################################
+#   Red neuronal
+############################################################
 
 class ChebNetTorch(nn.Module):
     """
@@ -178,9 +174,9 @@ class ChebNetTorch(nn.Module):
         return torch.from_numpy(X_norm.astype(np.float32))
 
 
-# =========================================================
-#   ENTRENAMIENTO Y PREDICCIÓN
-# =========================================================
+############################################################
+# Entrenamiento de la red y predicción
+############################################################
 
 def train_model(model: ChebNetTorch,
                 X_train: np.ndarray,
@@ -227,9 +223,9 @@ def predict_labels(model: ChebNetTorch, X: np.ndarray) -> np.ndarray:
     return (probs > 0.5).astype(int)
 
 
-# =========================================================
-#   APLICACIÓN TKINTER
-# =========================================================
+############################################################
+# GUI de la aplicación (no importante para el funcionamiento de la red)
+############################################################
 
 class App:
     def __init__(self, root):
@@ -264,7 +260,7 @@ class App:
         main_frame = Frame(self.root, bg="#1e1e1e")
         main_frame.pack(pady=10)
 
-# ================= BLOQUE DATOS =================
+####################### Datos #######################
         data_frame = Frame(main_frame, bg="#2b2b2b", bd=2, relief="groove")
         data_frame.grid(row=0, column=0, padx=10, pady=5, sticky="n")
 
@@ -300,7 +296,7 @@ class App:
         self.entry_split.insert(0, "80")
         self.entry_split.pack(pady=4)
 
-# ================= BLOQUE MODELO =================
+####################### Modelo de la red #######################
         model_frame = Frame(main_frame, bg="#2b2b2b", bd=2, relief="groove")
         model_frame.grid(row=0, column=1, padx=10, pady=5, sticky="n")
 
@@ -330,7 +326,7 @@ class App:
         self.activation_var.set("tanh")
         activations = [
             "tanh", "relu", "identity",
-            "elu", "silu", "leaky_relu", "softsign"
+             "leaky_relu", "sigmoid"
         ]
         OptionMenu(model_frame, self.activation_var, *activations).pack(pady=4)
 
@@ -358,7 +354,7 @@ class App:
             command=self.guardar_modelo
         ).pack(pady=4, fill="x")
 
-# ================= BLOQUE INFERENCIA =================
+####################### Inferencia #######################
         infer_frame = Frame(main_frame, bg="#2b2b2b", bd=2, relief="groove")
         infer_frame.grid(row=0, column=2, padx=10, pady=5, sticky="n")
 
@@ -407,7 +403,7 @@ class App:
             command=self.guardar_png
         ).pack(pady=6, fill="x")
 
-# ================= LOG =================
+###################### Log #######################
         Label(
             self.root,
             text="Registro:",
@@ -426,7 +422,7 @@ class App:
         )
         self.log.pack(pady=8)
 
-# ================= GRÁFICA =================
+####################### Gráfica de resultados #######################
         self.canvas_frame = Frame(self.root, bg="#1e1e1e")
         self.canvas_frame.pack(pady=8)
 
@@ -449,16 +445,16 @@ class App:
         self.last_figure = None
         self.canvas = None
 
-# =========================================================
-#   UTILIDAD LOG
-# =========================================================
+###########################################################
+# Log
+###########################################################
     def log_msg(self, msg):
         self.log.insert(END, msg + "\n")
         self.log.see(END)
 
-# =========================================================
-#   RESET CSV
-# =========================================================
+###########################################################
+# Eliminar CSV cargado
+###########################################################
     def resetear_csv(self):
         self.X_all_orig = None
         self.y_all = None
@@ -476,9 +472,9 @@ class App:
 
         self.log_msg("🗑️ CSV eliminado. No hay datos cargados.")
 
-# =========================================================
-#   CARGAR CSV
-# =========================================================
+###########################################################
+# Cargar CSV
+###########################################################
     def cargar_csv(self):
         file = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
         if not file:
@@ -542,9 +538,9 @@ class App:
 
         self.log_msg(f"✔ CSV cargado ({N} filas). Train={cut}, Test={N-cut}")
 
-# =========================================================
-#   ENTRENAR MODELO
-# =========================================================
+###########################################################
+# Entrenamiento
+###########################################################
     def entrenar_modelo(self):
         if self.X_train is None or self.y_train is None:
             self.log_msg("❌ Carga un CSV primero.")
@@ -591,9 +587,9 @@ class App:
         else:
             self.log_msg("✔ ENTRENAMIENTO COMPLETADO (sin test).")
 
-# =========================================================
-#   GUARDAR MODELO
-# =========================================================
+###########################################################
+# Guardar modelo entrenado
+###########################################################
     def guardar_modelo(self):
         if self.model is None:
             self.log_msg("❌ No hay modelo para guardar.")
@@ -612,16 +608,16 @@ class App:
             "max_neurons": self.model.max_neurons,
             "degree": self.model.degree,
             "activation_name": self.model.activation_name,
-            "train_min_": self.model.train_min_.cpu().numpy(),
-            "train_max_": self.model.train_max_.cpu().numpy()
+            "train_min_": self.model.train_min_.cpu(),
+            "train_max_": self.model.train_max_.cpu()
         }
 
         torch.save(data, file)
         self.log_msg(f"💾 Modelo guardado en {file}")
 
-# =========================================================
-#   CARGAR MODELO
-# =========================================================
+###########################################################
+# Cargar modelo desde un archivo
+###########################################################
     def cargar_modelo(self):
         file = filedialog.askopenfilename(
             filetypes=[("Modelo PyTorch", "*.pt"), ("Todos", "*.*")]
@@ -656,18 +652,18 @@ class App:
         self.log_msg(f"📌 Modelo cargado desde {file}")
         self.log_msg("Ahora puedes cargar un CSV nuevo y mostrar la frontera.")
 
-# =========================================================
-#   RESETEAR MODELO
-# =========================================================
+###########################################################
+# Eliminar modelo cargado
+###########################################################
     def resetear_modelo(self):
         self.model = None
         self.loaded_model = False
         self.inferencia_label.config(text="Modo: ENTRENAMIENTO", fg="orange")
         self.log_msg("🔄 Modelo reseteado. Puedes entrenar uno nuevo o cargar otro modelo.")
 
-# =========================================================
-#   MOSTRAR FRONTERA
-# =========================================================
+###########################################################
+# Mostrar la gráfica final
+###########################################################
     def mostrar_frontera(self):
         if self.model is None:
             self.log_msg("❌ No hay modelo entrenado ni cargado.")
@@ -688,7 +684,7 @@ class App:
         )
         grid = np.c_[xx.ravel(), yy.ravel()]
 
-# Normalización coherente
+# Normalización
         if self.loaded_model and self.model.scaler_initialized:
             grid_norm_t = self.model.normalize_with_model(grid)
             grid_norm = grid_norm_t.numpy()
@@ -738,9 +734,9 @@ class App:
 
         self.log_msg("🖼️ Frontera mostrada correctamente.")
 
-# =========================================================
-#   GUARDAR FIGURA
-# =========================================================
+###########################################################
+# Guardar la gráfica
+###########################################################
     def guardar_png(self):
         if self.last_figure is None:
             self.log_msg("❌ No hay figura para guardar.")
@@ -755,9 +751,9 @@ class App:
         self.log_msg(f"💾 Figura guardada en {file}")
 
 
-# =========================================================
-#   MAIN
-# =========================================================
+###########################################################
+# Main
+###########################################################
 if __name__ == "__main__":
     root = Tk()
     app = App(root)
